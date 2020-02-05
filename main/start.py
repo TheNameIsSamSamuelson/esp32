@@ -17,7 +17,4 @@ while True:
     led.value(not led.value())
     sleep(0.5)
 
-    if '.version' in os.listdir('main'):
-        import machine
-        machine.reset()
 
