@@ -5,29 +5,33 @@ import usocket
 import os
 import gc
 import machine
+import network
+
+# Receive the ssi/password on the constructor and make it globally avaliable to the object
 
 
 class OTAUpdater:
 
-    def __init__(self, github_repo, module='', main_dir='main'):
+    def __init__(self, github_repo,credentials, module='', main_dir='main'):
+        self.ssid = credentials[0]
+        self.password = credentials[1]
         self.http_client = HttpClient()
         self.github_repo = github_repo.rstrip('/').replace('https://github.com', 'https://api.github.com/repos')
         self.main_dir = main_dir
         self.module = module.rstrip('/')
 
-    @staticmethod
-    def using_network(ssid, password):
-        import network
+    def using_network(self):
         sta_if = network.WLAN(network.STA_IF)
         if not sta_if.isconnected():
             print('connecting to network...')
             sta_if.active(True)
-            sta_if.connect(ssid, password)
+            sta_if.connect(self.ssid, self.password)
             while not sta_if.isconnected():
                 pass
         print('network config:', sta_if.ifconfig())
 
     def check_for_update_to_install_during_next_reboot(self):
+        self.using_network()
         current_version = self.get_version(self.modulepath(self.main_dir))
         latest_version = self.get_latest_version()
 
@@ -54,7 +58,7 @@ class OTAUpdater:
             print('No new updates found...')
 
     def _download_and_install_update(self, latest_version, ssid, password):
-        OTAUpdater.using_network(ssid, password)
+        self.using_network()
 
         self.download_all_files(self.github_repo + '/contents/' + self.main_dir, latest_version)
         self.rmtree(self.modulepath(self.main_dir))
@@ -146,6 +150,7 @@ class OTAUpdater:
 
     def modulepath(self, path):
         return self.module + '/' + path if self.module else path
+
 
 
 class Response:
