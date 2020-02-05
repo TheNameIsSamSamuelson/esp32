@@ -21,4 +21,4 @@ from machine import Pin
 #     sleep(1)
 #     ctt+=1
 # sys.exit()
-#versao 77777
+#versao 777774444444
