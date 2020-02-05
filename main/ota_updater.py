@@ -40,7 +40,11 @@ class OTAUpdater:
         print('\tLatest version: ', latest_version)
         if latest_version > current_version:
             print('New version available, will download and install on next reboot')
-            os.mkdir(self.modulepath('next'))
+            try:
+                os.mkdir(self.modulepath('next'))
+            except OSError: # OSError: [Errno 17] EEXIST
+                self.rmtree('/next')
+                os.mkdir(self.modulepath('next'))
             with open(self.modulepath('next/.version_on_reboot'), 'w') as versionfile:
                 versionfile.write(latest_version)
                 versionfile.close()
@@ -48,12 +52,12 @@ class OTAUpdater:
         else:
             return False
 
-    def download_and_install_update_if_available(self, ssid, password):
+    def download_and_install_update_if_available(self):
         if 'next' in os.listdir(self.module):
             if '.version_on_reboot' in os.listdir(self.modulepath('next')):
                 latest_version = self.get_version(self.modulepath('next'), '.version_on_reboot')
                 print('New update found: ', latest_version)
-                self._download_and_install_update(latest_version, ssid, password)
+                self._download_and_install_update(latest_version, self.ssid, self.password)
         else:
             print('No new updates found...')
 
