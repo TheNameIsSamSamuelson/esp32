@@ -5,33 +5,29 @@ import usocket
 import os
 import gc
 import machine
-import network
-
-# Receive the ssi/password on the constructor and make it globally avaliable to the object
 
 
 class OTAUpdater:
 
-    def __init__(self, github_repo,credentials, module='', main_dir='main'):
-        self.ssid = credentials[0]
-        self.password = credentials[1]
+    def __init__(self, github_repo, module='', main_dir='main'):
         self.http_client = HttpClient()
         self.github_repo = github_repo.rstrip('/').replace('https://github.com', 'https://api.github.com/repos')
         self.main_dir = main_dir
         self.module = module.rstrip('/')
 
-    def using_network(self):
+    @staticmethod
+    def using_network(ssid, password):
+        import network
         sta_if = network.WLAN(network.STA_IF)
         if not sta_if.isconnected():
             print('connecting to network...')
             sta_if.active(True)
-            sta_if.connect(self.ssid, self.password)
+            sta_if.connect(ssid, password)
             while not sta_if.isconnected():
                 pass
         print('network config:', sta_if.ifconfig())
 
     def check_for_update_to_install_during_next_reboot(self):
-        self.using_network()
         current_version = self.get_version(self.modulepath(self.main_dir))
         latest_version = self.get_latest_version()
 
@@ -40,11 +36,7 @@ class OTAUpdater:
         print('\tLatest version: ', latest_version)
         if latest_version > current_version:
             print('New version available, will download and install on next reboot')
-            try:
-                os.mkdir(self.modulepath('next'))
-            except OSError: # OSError: [Errno 17] EEXIST
-                self.rmtree('/next')
-                os.mkdir(self.modulepath('next'))
+            os.mkdir(self.modulepath('next'))
             with open(self.modulepath('next/.version_on_reboot'), 'w') as versionfile:
                 versionfile.write(latest_version)
                 versionfile.close()
@@ -52,17 +44,17 @@ class OTAUpdater:
         else:
             return False
 
-    def download_and_install_update_if_available(self):
+    def download_and_install_update_if_available(self, ssid, password):
         if 'next' in os.listdir(self.module):
             if '.version_on_reboot' in os.listdir(self.modulepath('next')):
                 latest_version = self.get_version(self.modulepath('next'), '.version_on_reboot')
                 print('New update found: ', latest_version)
-                self._download_and_install_update(latest_version, self.ssid, self.password)
+                self._download_and_install_update(latest_version, ssid, password)
         else:
             print('No new updates found...')
 
     def _download_and_install_update(self, latest_version, ssid, password):
-        self.using_network()
+        OTAUpdater.using_network(ssid, password)
 
         self.download_all_files(self.github_repo + '/contents/' + self.main_dir, latest_version)
         self.rmtree(self.modulepath(self.main_dir))
@@ -154,7 +146,6 @@ class OTAUpdater:
 
     def modulepath(self, path):
         return self.module + '/' + path if self.module else path
-
 
 
 class Response:
@@ -285,3 +276,5 @@ class HttpClient:
 
     def delete(self, url, **kw):
         return self.request('DELETE', url, **kw)
+    
+ # 1.3
